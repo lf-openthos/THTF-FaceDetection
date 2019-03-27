@@ -302,7 +302,7 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 			#label="%.2f" % prob_age_keras + " " + lines_age[cls_age_keras]
 
 			cv2.putText(target_image, "Age : "+label, (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			offset=offset+16
+			offset=offset+20
 
 		if(model_gender!=None):
 			shape = model_gender.layers[0].get_output_at(0).get_shape().as_list()
@@ -316,7 +316,7 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 			prob_gender_keras = np.max(pred_gender_keras)
 			cls_gender_keras = pred_gender_keras.argmax()
 			#cv2.putText(target_image, "Gender : %.2f" % prob_gender_keras + " " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			cv2.putText(target_image, str(int(prob_gender_keras*100)) + "% " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
+			cv2.putText(target_image, "Gender : " + str(int(prob_gender_keras*100)) + "% " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
 			offset=offset+16
 
 		if(model_emotion!=None):
@@ -332,12 +332,12 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 			prob_emotion_keras = np.max(pred_emotion_keras)
 			cls_emotion_keras = pred_emotion_keras.argmax()
 			#cv2.putText(target_image, "Emotion : %.2f" % prob_emotion_keras + " " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			cv2.putText(target_image, str(int(prob_emotion_keras*100)) + "% " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
+			cv2.putText(target_image, "Emotion : " + str(int(prob_emotion_keras*100)) + "% " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
 			offset=offset+16
 
 	time_used = (datetime.now() - time_start).microseconds/1000
 	fps = 1000/time_used
-	cv2.putText(target_image, "FPS : %.1f" % fps , (20,40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5, (0,250,0));
+	cv2.putText(target_image, "FPS : %.1f" % fps , (20,40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,250,0));
 	cv2.imwrite("./results/" + filename, img_cp)
 	
 	
@@ -371,9 +371,9 @@ def main(argv):
 			f_scale = 1
 			if img_w > 1920: 
 				f_scale = img_w/1920
-				frame = cv2.resize(frame,(int(img_w/f_scale),int(img_h/f_scale)))
-
-			img=frame
+				img = cv2.resize(frame,(int(img_w/f_scale),int(img_h/f_scale)))
+			else:
+				img=frame
 			img = img[...,::-1]  #BGR 2 RGB
 			inputs = img.copy() / 255.0
 		

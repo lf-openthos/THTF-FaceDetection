@@ -22,7 +22,7 @@ import keras.backend.tensorflow_backend as ktf
 def get_session(gpu_fraction=0.333):
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_fraction,
                                 allow_growth=True)
-    return tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    return tf.Session(config=tf.ConfigProto(device_count={"CPU":12},inter_op_parallelism_threads=12,intra_op_parallelism_threads=12,gpu_options=gpu_options))
 	
 #YOLOV1
 #reference from https://github.com/xingwangsfu/caffe-yolo
@@ -282,6 +282,7 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 			continue
 
 		cv2.rectangle(target_image, (xmin2,ymin2), (xmax2,ymax2), color=(0,0,255), thickness=3)
+		cv2.rectangle(target_image, (xmin2,ymax2), (xmax2,ymax2+100), color=(192,192,192), thickness=-1)
 
 		offset=20
 
@@ -303,17 +304,19 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 					age=age+pred_age_keras[i]*i
 				age = int(age)
 				last_age = age
-				facerank = int((100-age)/10)+85+random.randint(1,5)
+				facerank = int((100-age)/3)+65+random.randint(1,3)
+				if last_gender == 0: facerank = facerank + 3
+				if last_gender > 100: facerank = 100
 				last_rank = facerank
 				
 			label=str(last_age)
 			
 			#label="%.2f" % prob_age_keras + " " + lines_age[cls_age_keras]
 
-			cv2.putText(target_image, "Age : "+label, (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+			cv2.putText(target_image, "Age: "+label, (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
 			offset=offset+20
 			#Generate random face rank
-			cv2.putText(target_image, "Face Rank: " + str(last_rank), (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+			cv2.putText(target_image, "Face Rank : " + str(last_rank), (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
 			offset=offset+20
 			
 		if(model_gender!=None):
@@ -331,7 +334,7 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 				last_gender = cls_gender_keras
 			
 			#cv2.putText(target_image, "Gender : %.2f" % prob_gender_keras + " " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			cv2.putText(target_image, lines_gender[last_gender], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+			cv2.putText(target_image, "Gender: " + lines_gender[last_gender], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
 			offset=offset+20
 
 		if(model_emotion!=None):
@@ -351,7 +354,8 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 				last_update = 0
 			
 			#cv2.putText(target_image, "Emotion : %.2f" % prob_emotion_keras + " " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			cv2.putText(target_image, str(int(last_emotion_prob*100)) + "% " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+			#cv2.putText(target_image, "Emotion : " + str(int(last_emotion_prob*100)) + "% " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+			cv2.putText(target_image, "Emotion: " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
 			offset=offset+20
 		
 		
@@ -366,6 +370,10 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 	
 def main(argv):
 	MODEL_ROOT_PATH="./pretrain/"
+	os.environ["KMP_BLOCKTIME"] = str("0")
+	os.environ["KMP_AFFINITY"]= str("granularity=fine,verbose,compact,1,0")
+	os.environ["OMP_NUM_THREADS"]= str("6")
+
 	ktf.set_session(get_session())
 	
 	#Load Model
@@ -374,16 +382,16 @@ def main(argv):
 	model_age = load_model(MODEL_ROOT_PATH+'agegender_age101_squeezenet.hdf5')
 	model_gender = load_model(MODEL_ROOT_PATH+'agegender_gender_squeezenet.hdf5')
 	if(os.path.exists(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.102-0.66.hdf5')):
-		#model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.102-0.66.hdf5')
-		model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.107-0.66.hdf5')		
+		model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.102-0.66.hdf5')
+		#model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.107-0.66.hdf5')		
 	else:
 		model_emotion = None
 
 	#Prepare WebCamera
 	cap = cv2.VideoCapture(0)
-	cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-	cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-	#cap.set(cv2.CAP_PROP_FPS,30)
+	#cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+	#cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+	#cap.set(cv2.CAP_PROP_FPS,15)
 
 	lines_age=open('words/agegender_age_words.txt').readlines()
 	lines_gender=open('words/agegender_gender_words.txt').readlines()
@@ -402,13 +410,14 @@ def main(argv):
 		#Face Detection
 		ret, frame = cap.read() #BGR
 		#Flip the image
-		frame = cv2.flip(frame,1)
+		#frame = cv2.flip(frame,1)
 
 		img=frame
+		img_cv = img.copy()
 		img = img[...,::-1]  #BGR 2 RGB
 		inputs = img.copy() / 255.0
 		
-		img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+		#img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 		img_camera = cv2.resize(inputs, (416,416))
 		img_camera = np.expand_dims(img_camera, axis=0)
 		out2 = model_face.predict(img_camera)[0]
@@ -420,7 +429,7 @@ def main(argv):
 		k = cv2.waitKey(1)
 
 		#k = cv2.waitKey(1)
-		if k == 27 or k == 'q' :
+		if k == 27 or k == ord('q') :
 			break
 
 	cap.release()
