@@ -1,0 +1,4 @@
+Optimization of Real-Time Multiple Face Detection on Intel® Xeon® Scalable Processors 
+ 
+With the processing power of new Xeon® Family (former name "Cascade Lake"), optimized Intel® compiler and MKL-DNN library, for the first time, it's possible for us to archieve real-time multiple human face detection while tring to detemine the owner's gender, age and even face rank(just for entainment) WITHOUT using any GPU or hardware accelerators.
+This demo system is powered by 4x XEON-8280L processors with a consumer grade USB Camera.

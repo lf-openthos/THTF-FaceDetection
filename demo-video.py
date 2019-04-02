@@ -377,18 +377,17 @@ def main(argv):
 	
 	#Load Model
 	model_face = load_model(MODEL_ROOT_PATH+'yolov2_tiny-face.h5')
-	#model_age = load_model(MODEL_ROOT_PATH+'agegender_age_squeezenet.hdf5')
-	model_age = load_model(MODEL_ROOT_PATH+'agegender_age101_squeezenet.hdf5')
-	model_gender = load_model(MODEL_ROOT_PATH+'agegender_gender_squeezenet.hdf5')
-	if(os.path.exists(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.102-0.66.hdf5')):
-		model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.102-0.66.hdf5')
-		#model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.107-0.66.hdf5')		
+	model_age = load_model(MODEL_ROOT_PATH+'agegender_age101_squeezenet_imdb.hdf5')
+	model_gender = load_model(MODEL_ROOT_PATH+'agegender_gender_squeezenet_imdb.hdf5')
+	if(os.path.exists(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.107-0.66.hdf5')):
+		model_emotion = load_model(MODEL_ROOT_PATH+'fer2013_mini_XCEPTION.107-0.66.hdf5')
+		
 	else:
 		model_emotion = None
 
 	#Prepare WebCamera
-	cap = cv2.VideoCapture("F:/soft/waifu2x/ffmpeg-20180224-c0919c4-win64-static/bin/test1.avi")
-	#cap = cv2.VideoCapture("test3.mp4")
+	#cap = cv2.VideoCapture("F:/soft/waifu2x/ffmpeg-20180224-c0919c4-win64-static/bin/test1.avi")
+	cap = cv2.VideoCapture("test3.mp4")
 	#cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 	#cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 	#cap.set(cv2.CAP_PROP_FPS,25)

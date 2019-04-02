@@ -22,7 +22,7 @@ import keras.backend.tensorflow_backend as ktf
 def get_session(gpu_fraction=0.333):
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_fraction,
                                 allow_growth=True)
-    return tf.Session(config=tf.ConfigProto(device_count={"CPU":12},inter_op_parallelism_threads=12,intra_op_parallelism_threads=12,gpu_options=gpu_options))
+    return tf.Session(config=tf.ConfigProto(device_count={"CPU":6},inter_op_parallelism_threads=1,intra_op_parallelism_threads=6,gpu_options=gpu_options))
 	
 #YOLOV1
 #reference from https://github.com/xingwangsfu/caffe-yolo
@@ -250,8 +250,10 @@ def crop(x,y,w,h,margin,img_width,img_height):
 def show_results(img,results, img_width, img_height, model_age, model_gender, model_emotion, time_start, lines_age, lines_gender, lines_fer2013):
 	img_cp = img.copy()
 	target_image=img_cp
-	global last_update, last_age, last_emotion, last_gender, last_emotion_prob, last_rank
+	global last_update, last_age, last_emotion, last_gender, last_emotion_prob, last_rank, verbose_debug
+	
 	last_update = last_update + 1
+	if last_update > 10: last_update = 0
 	
 	for i in range(len(results)):
 		#display detected face
@@ -281,21 +283,16 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 		if(face_image.shape[0]<=0 or face_image.shape[1]<=0):
 			continue
 
-		cv2.rectangle(target_image, (xmin2,ymin2), (xmax2,ymax2), color=(0,0,255), thickness=3)
-		cv2.rectangle(target_image, (xmin2,ymax2), (xmax2,ymax2+100), color=(192,192,192), thickness=-1)
 
-		offset=20
-
-
-		if(model_age!=None):
-			if last_update > 10:
+		if last_update == 0:
+			if(model_age!=None):	
 				shape = model_age.layers[0].get_output_at(0).get_shape().as_list()
 				img_keras = cv2.resize(face_image, (shape[1],shape[2]))
 				#img_keras = img_keras[::-1, :, ::-1].copy()	#BGR to RGB
 				img_keras = np.expand_dims(img_keras, axis=0)
 				img_keras = img_keras / 255.0
 
-				pred_age_keras = model_age.predict(img_keras)[0]
+				pred_age_keras = model_age.predict(img_keras, verbose=verbose_debug)[0]
 				prob_age_keras = np.max(pred_age_keras)
 				cls_age_keras = pred_age_keras.argmax()
 
@@ -308,19 +305,8 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 				if last_gender == 0: facerank = facerank + 3
 				if last_gender > 100: facerank = 100
 				last_rank = facerank
-				
-			label=str(last_age)
-			
-			#label="%.2f" % prob_age_keras + " " + lines_age[cls_age_keras]
 
-			cv2.putText(target_image, "Age: "+label, (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
-			offset=offset+20
-			#Generate random face rank
-			cv2.putText(target_image, "Face Rank : " + str(last_rank), (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
-			offset=offset+20
-			
-		if(model_gender!=None):
-			if last_update > 10:
+			if(model_gender!=None):
 				shape = model_gender.layers[0].get_output_at(0).get_shape().as_list()
 
 				img_gender = cv2.resize(face_image, (shape[1],shape[2]))
@@ -328,17 +314,12 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 				img_gender = np.expand_dims(img_gender, axis=0)
 				img_gender = img_gender / 255.0
 
-				pred_gender_keras = model_gender.predict(img_gender)[0]
+				pred_gender_keras = model_gender.predict(img_gender, verbose=verbose_debug)[0]
 				prob_gender_keras = np.max(pred_gender_keras)
 				cls_gender_keras = pred_gender_keras.argmax()
 				last_gender = cls_gender_keras
-			
-			#cv2.putText(target_image, "Gender : %.2f" % prob_gender_keras + " " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			cv2.putText(target_image, "Gender: " + lines_gender[last_gender], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
-			offset=offset+20
-
-		if(model_emotion!=None):
-			if last_update > 10:
+				
+			if(model_emotion!=None):
 				shape = model_emotion.layers[0].get_output_at(0).get_shape().as_list()
 				img_fer2013 = cv2.resize(face_image, (shape[1],shape[2]))
 				img_fer2013 = cv2.cvtColor(img_fer2013,cv2.COLOR_BGR2GRAY)
@@ -346,18 +327,35 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 				img_fer2013 = np.expand_dims(img_fer2013, axis=3)
 				img_fer2013 = img_fer2013 / 255.0 *2 -1
 			
-				pred_emotion_keras = model_emotion.predict(img_fer2013)[0]
+				pred_emotion_keras = model_emotion.predict(img_fer2013, verbose=verbose_debug)[0]
 				prob_emotion_keras = np.max(pred_emotion_keras)
 				cls_emotion_keras = pred_emotion_keras.argmax()
 				last_emotion = cls_emotion_keras
 				last_emotion_prob = prob_emotion_keras
 				last_update = 0
-			
-			#cv2.putText(target_image, "Emotion : %.2f" % prob_emotion_keras + " " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
-			#cv2.putText(target_image, "Emotion : " + str(int(last_emotion_prob*100)) + "% " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
-			cv2.putText(target_image, "Emotion: " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
-			offset=offset+20
+
+				
+
+		cv2.rectangle(target_image, (xmin2,ymin2), (xmax2,ymax2), color=(0,0,255), thickness=3)
+		cv2.rectangle(target_image, (xmin2,ymax2), (xmax2,ymax2+100), color=(192,192,192), thickness=-1)
+
+		offset=20		
 		
+		#label="%.2f" % prob_age_keras + " " + lines_age[cls_age_keras]
+		cv2.putText(target_image, "Age: "+str(last_age), (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+		offset=offset+20
+		#Generate random face rank
+		cv2.putText(target_image, "Face Rank : " + str(last_rank), (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+		offset=offset+20	
+			
+		#cv2.putText(target_image, "Gender : %.2f" % prob_gender_keras + " " + lines_gender[cls_gender_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
+		cv2.putText(target_image, "Gender: " + lines_gender[last_gender], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+		offset=offset+20
+			
+		#cv2.putText(target_image, "Emotion : %.2f" % prob_emotion_keras + " " + lines_fer2013[cls_emotion_keras], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.8, (0,0,250));
+		#cv2.putText(target_image, "Emotion : " + str(int(last_emotion_prob*100)) + "% " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+		cv2.putText(target_image, "Emotion: " + lines_fer2013[last_emotion], (xmin2,ymax2+offset), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0,0,250));
+				
 		
 	time_used = (datetime.now() - time_start).microseconds/1000
 	fps = 1000/time_used
@@ -370,9 +368,11 @@ def show_results(img,results, img_width, img_height, model_age, model_gender, mo
 	
 def main(argv):
 	MODEL_ROOT_PATH="./pretrain/"
-	os.environ["KMP_BLOCKTIME"] = str("0")
+	os.environ["KMP_BLOCKTIME"] = str("1")
 	os.environ["KMP_AFFINITY"]= str("granularity=fine,verbose,compact,1,0")
 	os.environ["OMP_NUM_THREADS"]= str("6")
+	os.environ["MKLDNN_VERBOSE"] = str("2")
+	os.environ["OMP_DISPLAY_ENV"]= str("TRUE")
 
 	ktf.set_session(get_session())
 	
@@ -396,13 +396,15 @@ def main(argv):
 	lines_age=open('words/agegender_age_words.txt').readlines()
 	lines_gender=open('words/agegender_gender_words.txt').readlines()
 	lines_fer2013=open('words/emotion_words.txt').readlines()
-	global last_update, last_age, last_emotion, last_emotion_prob, last_gender, last_rank
+	global last_update, last_age, last_emotion, last_emotion_prob, last_gender, last_rank, verbose_debug
 	last_update = 20 #we need to update all variables for the first time
 	last_gender = 1
 	last_age = 18
 	last_emotion = 6
 	last_emotion_prob = 0.8
 	last_rank = 95
+	
+	verbose_debug = 1
 	
 	#Detection
 	while True:
@@ -420,7 +422,7 @@ def main(argv):
 		#img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 		img_camera = cv2.resize(inputs, (416,416))
 		img_camera = np.expand_dims(img_camera, axis=0)
-		out2 = model_face.predict(img_camera)[0]
+		out2 = model_face.predict(img_camera, verbose=verbose_debug, steps=1)[0]
 		results = interpret_output_yolov2(out2, img.shape[1], img.shape[0])
 
 		#Age and Gender Detection
